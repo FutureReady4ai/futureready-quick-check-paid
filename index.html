@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FutureReady AI — Career Consultant</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:#0B1437;color:#fff;min-height:100vh;-webkit-font-smoothing:antialiased}
+    :root{--coral:#FF6B4A;--gold:#FFB938;--mint:#10D9A0;--sky:#38BDF8}
+    .container{max-width:1200px;margin:0 auto;height:100vh;display:flex;flex-direction:column}
+    .header{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.02);flex-shrink:0}
+    .brand{display:flex;align-items:center;gap:10px}
+    .brand-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--coral),var(--gold));display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;font-family:'Outfit'}
+    .brand-text{font-size:16px;font-weight:800;font-family:'Outfit'}
+    .brand-text span{color:var(--coral)}
+    .timer{margin-left:auto;display:flex;align-items:center;gap:10px;padding:8px 14px;background:rgba(255,107,74,.1);border:1px solid rgba(255,107,74,.2);border-radius:12px;font-size:12px;font-weight:700;font-family:'JetBrains Mono',monospace}
+    .timer-bar{width:60px;height:4px;background:rgba(255,255,255,.1);border-radius:2px;overflow:hidden}
+    .timer-fill{height:100%;background:linear-gradient(90deg,var(--coral),var(--gold));border-radius:2px;transition:width 1s linear}
+    .messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px}
+    .msg{display:flex;gap:10px;animation:fadeIn .3s ease}
+    .msg.user{justify-content:flex-end}
+    .avatar{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:2px}
+    .avatar.ai{background:linear-gradient(135deg,var(--coral),var(--gold))}
+    .avatar.hu{background:rgba(255,255,255,.1)}
+    .bubble{max-width:75%;padding:14px 18px;border-radius:18px;line-height:1.7;font-size:14px}
+    .bubble.ai{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.06);border-radius:18px 18px 18px 4px}
+    .bubble.hu{background:linear-gradient(135deg,var(--coral),#FF8A70);border-radius:18px 18px 4px 18px}
+    .bubble strong{color:#fff;font-weight:700}
+    .input-area{padding:12px 20px 16px;border-top:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);flex-shrink:0}
+    .input-box{display:flex;gap:10px;align-items:center;background:rgba(255,255,255,.05);border-radius:16px;border:1px solid rgba(255,255,255,.08);padding:6px}
+    .input-box input{flex:1;background:transparent;border:none;outline:none;color:#fff;font-size:14px;font-family:'Plus Jakarta Sans',sans-serif;padding:10px 16px}
+    .input-box input::placeholder{color:rgba(255,255,255,.25)}
+    .send-btn{background:linear-gradient(135deg,var(--coral),#FF8A70);color:#fff;border:none;border-radius:12px;padding:10px 20px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Plus Jakarta Sans';flex-shrink:0}
+    .send-btn:hover{box-shadow:0 4px 16px rgba(255,107,74,.3)}
+    .send-btn:disabled{opacity:.4;cursor:default}
+    .info{font-size:10px;color:rgba(255,255,255,.25);font-family:'JetBrains Mono',monospace;margin-top:8px;display:flex;justify-content:space-between}
+    .typing{display:flex;gap:4px;align-items:center;padding:16px 20px}
+    .typing span{width:7px;height:7px;border-radius:50%;background:var(--coral);animation:pulse 1.2s ease-in-out infinite}
+    .typing span:nth-child(2){animation-delay:.2s}
+    .typing span:nth-child(3){animation-delay:.4s}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    @keyframes pulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.1)}}
+    ::-webkit-scrollbar{width:6px}
+    ::-webkit-scrollbar-track{background:transparent}
+    ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="brand">
+      <div class="brand-icon">FR</div>
+      <div class="brand-text">Future<span>Ready</span> AI</div>
+    </div>
+    <div class="timer">
+      <span>⚡ Quick Check</span>
+      <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+      <span id="timerText">15:00</span>
+    </div>
+  </div>
+  <div class="messages" id="msgs"></div>
+  <div class="input-area">
+    <div class="input-box">
+      <input type="text" id="userInput" placeholder="Ask about your career..." autocomplete="off">
+      <button class="send-btn" id="sendBtn" onclick="send()">Send</button>
+    </div>
+    <div class="info">
+      <span>🤖 Powered by Google Gemini · Real-time career insights</span>
+      <span>Free · 15 min</span>
+    </div>
+  </div>
+</div>
+<script>
+const DURATION=15*60;
+let elapsed=0,started=false,timer=null;
+
+window.onload=()=>{
+  addMsg('ai','Hey! I\'m your AI career consultant — completely free, no signup needed. My algorithms use the <strong>5 C\'s Framework</strong> (Curiosity, Courage, Creativity, Compassion, Communication).\n\nYou\'ve got <strong>15 minutes</strong> for one focused question. What\'s the ONE career question on your mind right now?\n\nBe specific — vague questions get vague answers. I\'ll give you a direct, honest response with data to back it up.');
+  document.getElementById('userInput').focus();
+};
+
+function addMsg(who,text){
+  const c=document.getElementById('msgs');
+  const d=document.createElement('div');
+  d.className='msg '+(who==='ai'?'assistant':'user');
+  const avatar=who==='ai'?'🤖':'👤';
+  const cls=who==='ai'?'ai':'hu';
+  d.innerHTML='<div class="avatar '+cls+'">'+avatar+'</div><div class="bubble '+cls+'">'+fmt(text)+'</div>';
+  c.appendChild(d);
+  c.scrollTop=c.scrollHeight;
+}
+
+function fmt(t){
+  return t
+    .replace(/^## (.+)$/gm,'<strong style="font-size:16px;display:block;margin:8px 0 4px">$1</strong>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^- (.+)$/gm,'<div style="margin:3px 0">• $1</div>')
+    .replace(/\n/g,'<br>');
+}
+
+function startTimer(){
+  if(!started){started=true;timer=setInterval(tick,1000)}
+}
+
+function tick(){
+  elapsed++;
+  const r=Math.max(0,DURATION-elapsed);
+  const m=Math.floor(r/60),s=r%60;
+  document.getElementById('timerText').textContent=m+':'+String(s).padStart(2,'0');
+  document.getElementById('timerFill').style.width=(elapsed/DURATION*100)+'%';
+  if(r<=0){clearInterval(timer);document.getElementById('userInput').disabled=true;document.getElementById('sendBtn').disabled=true;addMsg('ai','⏰ Your 15-minute session has ended. Thank you for using FutureReady AI!')}
+}
+
+async function send(){
+  const input=document.getElementById('userInput');
+  const text=input.value.trim();
+  if(!text)return;
+  startTimer();
+  addMsg('user',text);
+  input.value='';
+  const btn=document.getElementById('sendBtn');
+  btn.disabled=true;btn.textContent='...';
+
+  // Show typing indicator
+  const msgs=document.getElementById('msgs');
+  const typing=document.createElement('div');
+  typing.className='typing';
+  typing.id='typingIndicator';
+  typing.innerHTML='<div class="avatar ai">🤖</div><span></span><span></span><span></span>';
+  msgs.appendChild(typing);
+  msgs.scrollTop=msgs.scrollHeight;
+
+  try{
+    const r=await fetch('/api/chat',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:text})
+    });
+    const data=await r.json();
+
+    // Remove typing indicator
+    document.getElementById('typingIndicator')?.remove();
+
+    if(data.content && data.content[0] && data.content[0].text){
+      addMsg('ai',data.content[0].text);
+    } else if(data.error){
+      addMsg('ai','⚠️ Error: '+data.error+(data.debug?' ('+data.debug+')':''));
+    } else {
+      addMsg('ai','⚠️ Unexpected response. Please try again.');
+    }
+  }catch(e){
+    document.getElementById('typingIndicator')?.remove();
+    addMsg('ai','⚠️ Could not connect to server. Error: '+e.message);
+  }
+  btn.disabled=false;btn.textContent='Send';input.focus();
+}
+
+document.getElementById('userInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();send()}});
+</script>
+</body>
+</html>
