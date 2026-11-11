@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { message } = req.body;
+  const { message, history } = req.body || {};
   if (!message) return res.status(400).json({ error: 'Message required' });
 
   const geminiKey = process.env.GEMINI_API_KEY;
@@ -34,14 +34,12 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [
-            { role: 'user', parts: [{ text: message }] }
-          ],
+          contents: buildContents(history, message),
           systemInstruction: {
             parts: [{ text: systemPrompt }]
           },
           generationConfig: {
-            maxOutputTokens: 1500,
+            maxOutputTokens: 8192,
             temperature: 0.9,
           },
         }),
@@ -54,7 +52,9 @@ export default async function handler(req, res) {
         continue;
       }
 
-      const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      // Gemini can split a reply into several parts (and thinking parts) — join all visible text
+      const parts = data.candidates?.[0]?.content?.parts || [];
+      const textContent = parts.filter(p => p.text && !p.thought).map(p => p.text).join('').trim();
       if (textContent) {
         return res.status(200).json({
           content: [{ type: 'text', text: textContent }]
@@ -70,4 +70,20 @@ export default async function handler(req, res) {
   return res.status(500).json({
     content: [{ type: 'text', text: 'Error: ' + lastError }]
   });
+}
+
+// Turns earlier turns (sent by the page) plus the new message into Gemini's format.
+// Keeps the last 20 turns so long sessions stay within limits.
+function buildContents(history, message) {
+  const turns = Array.isArray(history) ? history.slice(-20) : [];
+  const contents = turns
+    .filter(t => t && typeof t.text === 'string' && t.text.trim())
+    .map(t => ({
+      role: t.role === 'ai' || t.role === 'model' || t.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: t.text.slice(0, 8000) }]
+    }));
+  // Gemini requires the conversation to start with a user turn
+  while (contents.length && contents[0].role !== 'user') contents.shift();
+  contents.push({ role: 'user', parts: [{ text: message }] });
+  return contents;
 }
